@@ -38,7 +38,7 @@ theorem field_encode_eq (f : Field) (h : Spec.ValidField f) : f.encode = Spec.fi
     show Varint.encode (n * 8 + 1) ++ leBytes 8 v = Spec.varint (n * 8 + 1) ++ Spec.leBytes 8 v
     rw [Proofs.Varint.encode_eq _ (hn 1 (by decide)), Proofs.Fixed.leBytes_eq]
   | len d =>
-    have h3 : d.length < 2 ^ 31 := h3
+    have h3 : d.length < 2 ^ 31 - 16 := h3
     show Varint.encode (n * 8 + 2) ++ (Varint.encode d.length ++ d) =
       Spec.varint (n * 8 + 2) ++ Spec.varint d.length ++ d
     rw [Proofs.Varint.encode_eq _ (hn 2 (by decide)), Proofs.Varint.encode_eq _ (by omega),
@@ -63,12 +63,19 @@ theorem encode_eq (fs : List Field) (h : ∀ f ∈ fs, Spec.ValidField f) : enco
 
 /-! ## One record -/
 
+/-- The length checks in `decodeField` look at no more than `k` bytes. -/
+theorem take_short (l : List UInt8) (k : Nat) : ((l.take k).length < k) = (l.length < k) := by
+  simp only [List.length_take]
+  apply propext
+  omega
+
 theorem decodeField_iff (bs : List UInt8) (f : Field) (rest : List UInt8) :
     decodeField bs = some (f, rest) ↔
       ∃ tag payload, bs = tag ++ payload ++ rest ∧ Spec.FieldBytes tag payload f := by
   constructor
   · intro h
     unfold decodeField at h
+    simp only [take_short] at h
     cases ht : Varint.decodeAux 5 bs with
     | none => rw [ht] at h; exact absurd h (by simp)
     | some p =>
@@ -109,7 +116,7 @@ theorem decodeField_iff (bs : List UInt8) (f : Field) (rest : List UInt8) :
           split at h
           · rename_i len r2 hv
             obtain ⟨pre, hr, hps, hpv⟩ := (Proofs.Varint.decodeAux_iff 5 r len r2).mp hv
-            by_cases hl : 2 ^ 31 ≤ len ∨ r2.length < len
+            by_cases hl : 2 ^ 31 - 16 ≤ len ∨ r2.length < len
             · simp only [hl, ↓reduceIte] at h
               exact absurd h (by simp)
             · simp only [hl, ↓reduceIte, Option.some.injEq, Prod.mk.injEq] at h
@@ -141,6 +148,7 @@ theorem decodeField_iff (bs : List UInt8) (f : Field) (rest : List UInt8) :
       omega
     have hnum' : num = Spec.groupsValue tag / 8 := hnum
     unfold decodeField
+    simp only [take_short]
     rw [hd]
     simp only [hc, ↓reduceIte]
     simp only at hm
@@ -159,7 +167,7 @@ theorem decodeField_iff (bs : List UInt8) (f : Field) (rest : List UInt8) :
       obtain ⟨pre, rfl, hps, hpv, hdl⟩ := hm
       have hd2 : Varint.decodeAux 5 (pre ++ d ++ rest) = some (d.length, d ++ rest) :=
         (Proofs.Varint.decodeAux_iff 5 _ _ _).mpr ⟨pre, List.append_assoc _ _ _, hps, hpv.symm⟩
-      have hl' : ¬(2 ^ 31 ≤ d.length ∨ (d ++ rest).length < d.length) := by simp; omega
+      have hl' : ¬(2 ^ 31 - 16 ≤ d.length ∨ (d ++ rest).length < d.length) := by simp; omega
       rw [hw]
       simp only
       rw [hd2]
@@ -304,7 +312,7 @@ theorem fieldBytes_split (f : Field) (h : Spec.ValidField f) :
     exact ⟨Proofs.Fixed.leBytes_length 8 v,
       (Proofs.Fixed.leValue_leBytes 8 v (by simpa using h3)).symm⟩
   | len d =>
-    have h3 : d.length < 2 ^ 31 := h3
+    have h3 : d.length < 2 ^ 31 - 16 := h3
     obtain ⟨hs, hg⟩ := tag_bytes n 2 h2 (by decide)
     refine ⟨Spec.varint (n * 8 + 2), Spec.varint d.length ++ d, List.append_assoc _ _ _, hs,
       by rw [hg]; omega, show n = _ by rw [hg]; omega, h1, ?_⟩

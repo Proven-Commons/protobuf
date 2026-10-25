@@ -10,13 +10,15 @@
     encode FIELDS    prints  the hex of the encoded message, or INVALID
                      when a field cannot be written
 
-  KIND is `varint`, `i64`, `len` or `i32`. VALUE is a decimal number,
-  or for `len` the bytes in lower case hex (empty for no bytes). FIELDS
-  is NUMBER:KIND:VALUE items separated by commas, or `-` for none.
+  KIND is `varint`, `i64`, `len` or `i32`. VALUE is a decimal number of
+  at most 30 digits, or for `len` the bytes in lower case hex (empty for
+  no bytes). FIELDS is NUMBER:KIND:VALUE items separated by commas, or
+  `-` for none. HEX is lower case.
 
   A malformed request prints `error`: an unknown operation, hex digits
-  that are not in pairs, or a field item that does not parse. A request
-  line may end in LF or CR LF.
+  that are not lower case or not in pairs, a number of more than 30
+  digits, or a field item that does not parse. A request line may end in
+  LF or CR LF. Each answer is flushed as soon as it is written.
 
   Every answer comes from the proved functions in `Protobuf/`: `decode`,
   `encode` and `Field.isValid`. The parsing and printing here are covered
@@ -103,6 +105,7 @@ def main (args : List String) : IO UInt32 := do
       let line ← stdin.getLine
       if line.isEmpty then break
       stdout.putStrLn ((request (chomp line)).getD "error")
+      stdout.flush
     return 0
   | _ =>
     IO.eprintln "usage: protowire serve"

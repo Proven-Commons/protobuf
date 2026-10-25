@@ -46,9 +46,11 @@ theorem Spec.encode_eq (fs : List Field) (h : ∀ f ∈ fs, Spec.ValidField f) :
     Protobuf.encode fs = Spec.encode fs := sorry
 
 /-- `decode` returns `fs` exactly when the bytes split into records, one
-    per field of `fs`, in order. So it accepts every well-formed message,
-    refuses everything else (a record cut short, a length past the end,
-    field number 0, a group, an unknown wire type), and returns the
+    per field of `fs`, in order, by the rules of `Spec.FieldBytes`. So it
+    reads every message made of `VARINT`, `I64`, `LEN` and `I32` records
+    with field numbers from 1 to 2^29 - 1, refuses everything else (a
+    record cut short, a length past the end, field number 0, a group, an
+    unknown wire type, an oversized tag or length), and returns the
     fields as written. -/
 theorem Spec.decode_iff (bs : List UInt8) (fs : List Field) :
     decode bs = some fs ↔ Spec.Message bs fs := sorry
@@ -63,27 +65,31 @@ theorem Spec.decode_valid (bs : List UInt8) (fs : List Field) (h : decode bs = s
 
 /-! ## Test vectors -/
 
-/-- The encoding guide's examples: 1, 150, and the largest 64-bit value
-    as varints, and the messages with field 1 set to 150, field 2 set
-    to "testing", field 3 holding the first message, and the packed
-    field 4 holding 3, 270 and 86942. -/
+/-- The encoding guide's worked bytes: 1 and 150 as varints, -2 as a
+    ten-byte varint (2^64 - 2 unsigned), and the messages `Test1` with
+    field 1 set to 150, `Test2` with field 2 set to "testing", `Test3`
+    holding the first message in field 3, and `Test4` with field 4 set
+    to "hello" and field 5 packed with 1, 2 and 3. -/
 theorem Spec.guide_vectors :
     Varint.encode 1 = [0x01] ∧
     Varint.encode 150 = [0x96, 0x01] ∧
-    Varint.encode (2 ^ 64 - 1) = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01] ∧
+    Varint.encode (2 ^ 64 - 2) = [0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01] ∧
     decode [0x08, 0x96, 0x01] = some [⟨1, .varint 150⟩] ∧
     decode [0x12, 0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67] =
       some [⟨2, .len [0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67]⟩] ∧
     decode [0x1a, 0x03, 0x08, 0x96, 0x01] = some [⟨3, .len [0x08, 0x96, 0x01]⟩] ∧
-    decode [0x22, 0x06, 0x03, 0x8e, 0x02, 0x9e, 0xa7, 0x05] =
-      some [⟨4, .len [0x03, 0x8e, 0x02, 0x9e, 0xa7, 0x05]⟩] ∧
+    decode [0x22, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x2a, 0x03, 0x01, 0x02, 0x03] =
+      some [⟨4, .len [0x68, 0x65, 0x6c, 0x6c, 0x6f]⟩, ⟨5, .len [0x01, 0x02, 0x03]⟩] ∧
     Protobuf.encode [⟨1, .varint 150⟩, ⟨2, .len [0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67]⟩] =
       [0x08, 0x96, 0x01, 0x12, 0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67] := sorry
 
-/-- Fixed-width values are little-endian, and the reference parsers'
-    readings of unusual varints: not in shortest form, and ten bytes
-    with bits past the 64th. -/
+/-- Cases the guide does not work through: the largest 64-bit value is
+    ten bytes; fixed-width values are little-endian; the reference
+    parsers' readings of unusual varints, not in shortest form, and ten
+    bytes with bits past the 64th; the largest field number; and the
+    empty message. -/
 theorem Spec.edge_vectors :
+    Varint.encode (2 ^ 64 - 1) = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01] ∧
     decode [0x0d, 0x01, 0x02, 0x03, 0x04] = some [⟨1, .i32 0x04030201⟩] ∧
     decode [0x09, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08] =
       some [⟨1, .i64 0x0807060504030201⟩] ∧
@@ -95,8 +101,9 @@ theorem Spec.edge_vectors :
 
 /-- Input the decoder refuses: a varint cut short, an eleventh varint
     byte, field number 0, a length past the end, fixed-width values cut
-    short, a group, wire types 6 and 7, a tag of 2^32 or more, and a tag
-    or length longer than five bytes. -/
+    short, a group start and a group end, wire types 6 and 7, a tag of
+    2^32 or more (from exactly 2^32, which would be field number 2^29),
+    and a tag or length longer than five bytes. -/
 theorem Spec.reject_vectors :
     decode [0x08] = none ∧
     decode [0x08, 0x80] = none ∧
@@ -106,8 +113,10 @@ theorem Spec.reject_vectors :
     decode [0x0d, 0x01, 0x02, 0x03] = none ∧
     decode [0x09, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07] = none ∧
     decode [0x0b, 0x0c] = none ∧
+    decode [0x0c] = none ∧
     decode [0x0e, 0x00] = none ∧
     decode [0x0f, 0x00] = none ∧
     decode [0xf8, 0xff, 0xff, 0xff, 0x1f, 0x01] = none ∧
+    decode [0x80, 0x80, 0x80, 0x80, 0x10, 0x01] = none ∧
     decode [0x88, 0x80, 0x80, 0x80, 0x80, 0x00, 0x01] = none ∧
     decode [0x0a, 0x81, 0x80, 0x80, 0x80, 0x80, 0x00, 0x61] = none := sorry

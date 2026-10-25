@@ -85,20 +85,25 @@ varint formed from the field number and the wire type via the formula
 type has a dynamic length, specified by a varint immediately after the
 tag, which is followed by the payload as usual."
 
-Field numbers run from 1 to 2^29 - 1, and a message is under 2 GiB. The
-reference parsers read a tag or a length as a varint of at most five
-bytes, refuse a tag of 2^32 or more and a length of 2^31 or more, and
-refuse field number 0. Groups, wire types 3 and 4, are deprecated and
+The language guide gives field numbers from 1 to 2^29 - 1, and the
+encoding guide says "Protos must be smaller than 2 GiB when serialized".
+Both reference parsers read a tag or a length as a varint of at most
+five bytes. Where they disagree, this specification takes the stricter
+reading: upb reads field number 0 and the C++ parser refuses it; the C++
+parser reads a tag of 2^32 or more by dropping its high bits and upb
+refuses it; upb reads a length up to 2^31 - 1 and the C++ parser refuses
+one of 2^31 - 16 or more. Groups, wire types 3 and 4, are deprecated and
 outside this library; wire types 6 and 7 do not exist. -/
 
 /-- A field the encoder can write: a field number from 1 to 2^29 - 1,
-    and a value that fits its wire type. -/
+    and a value that fits its wire type, with bytes the C++ parser
+    reads. -/
 def Spec.ValidField (f : Field) : Prop :=
   1 ≤ f.number ∧ f.number < 2 ^ 29 ∧
   match f.value with
   | .varint v => v < 2 ^ 64
   | .i64 v => v < 2 ^ 64
-  | .len d => d.length < 2 ^ 31
+  | .len d => d.length < 2 ^ 31 - 16
   | .i32 v => v < 2 ^ 32
 
 /-- `tag` then `payload` are the bytes of field `f`. -/
@@ -110,7 +115,7 @@ def Spec.FieldBytes (tag payload : List UInt8) (f : Field) : Prop :=
   | 1, .i64 v => payload.length = 8 ∧ v = Spec.leValue payload
   | 2, .len d =>
     ∃ pre, payload = pre ++ d ∧ Spec.VarintShape 5 pre ∧ Spec.groupsValue pre = d.length ∧
-      d.length < 2 ^ 31
+      d.length < 2 ^ 31 - 16
   | 5, .i32 v => payload.length = 4 ∧ v = Spec.leValue payload
   | _, _ => False
 

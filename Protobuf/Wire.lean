@@ -37,13 +37,13 @@ def encode (fs : List Field) : List UInt8 :=
 
 /-- Whether the field can be written: a field number from 1 to
     2^29 - 1, values that fit their wire type, and bytes shorter than
-    2^31. -/
+    2^31 - 16, the longest the C++ parser reads. -/
 def Field.isValid (f : Field) : Bool :=
   1 ≤ f.number && f.number < 2 ^ 29 &&
   match f.value with
   | .varint v => v < 2 ^ 64
   | .i64 v => v < 2 ^ 64
-  | .len d => d.length < 2 ^ 31
+  | .len d => d.length < 2 ^ 31 - 16
   | .i32 v => v < 2 ^ 32
 
 /-! ## Decoding -/
@@ -53,7 +53,9 @@ def leValue (bs : List UInt8) : Nat :=
   bs.foldr (fun b acc => b.toNat + 256 * acc) 0
 
 /-- Reads one field from the front of the input: the field, and the
-    bytes after it. -/
+    bytes after it. Each length check looks at no more of the input than
+    the field needs, so reading a message takes time in proportion to
+    its length. -/
 def decodeField (bs : List UInt8) : Option (Field × List UInt8) :=
   match Varint.decodeAux 5 bs with
   | none => none
@@ -66,14 +68,18 @@ def decodeField (bs : List UInt8) : Option (Field × List UInt8) :=
         match Varint.decode rest with
         | some (v, rest) => some (⟨n, .varint v⟩, rest)
         | none => none
-      | 1 => if rest.length < 8 then none else some (⟨n, .i64 (leValue (rest.take 8))⟩, rest.drop 8)
+      | 1 =>
+        if (rest.take 8).length < 8 then none
+        else some (⟨n, .i64 (leValue (rest.take 8))⟩, rest.drop 8)
       | 2 =>
         match Varint.decodeAux 5 rest with
         | some (len, rest) =>
-          if 2 ^ 31 ≤ len ∨ rest.length < len then none
+          if 2 ^ 31 - 16 ≤ len ∨ (rest.take len).length < len then none
           else some (⟨n, .len (rest.take len)⟩, rest.drop len)
         | none => none
-      | 5 => if rest.length < 4 then none else some (⟨n, .i32 (leValue (rest.take 4))⟩, rest.drop 4)
+      | 5 =>
+        if (rest.take 4).length < 4 then none
+        else some (⟨n, .i32 (leValue (rest.take 4))⟩, rest.drop 4)
       | _ => none
 
 /-- Reads fields until the input ends. Each field takes at least one

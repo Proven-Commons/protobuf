@@ -33,12 +33,14 @@ Inputs come from a recorded seed:
 - field lists the encoder must refuse;
 - malformed requests, which the tool must answer with `error`.
 
-For every input the Lean answer must equal the oracle's.
+Every seventh request ends in CR LF. For every input the Lean answer
+must equal the oracle's, and the two parsers must disagree only in the
+known ways.
 
     python3 tests/run_tests.py [--seed N] [--count N]
 
-It needs `protobuf` and `grpcio-tools` at the versions below. When they
-are missing it creates a virtual environment in `.lake/oracle-venv`,
+It needs `protobuf` and `grpcio-tools` at the versions below, with
+protobuf on its upb backend. When they are missing it creates a virtual environment in `.lake/oracle-venv`,
 installs them there, and runs itself again with it; where Python cannot
 make one, it installs them into `.lake/oracle-packages` instead. It builds the
 executable, writes tests/TEST-RESULTS.md, and exits non-zero if any
@@ -73,24 +75,39 @@ def ensure_oracles():
     versions into a virtual environment and run again with it; where a
     virtual environment cannot be made, install them into a folder
     instead and import them from there."""
-    try:
-        import google.protobuf  # noqa: F401
-        import grpc_tools  # noqa: F401
+    if oracles_ready():
         return
-    except ImportError:
-        pass
     if os.environ.get("PROTOWIRE_ORACLE_VENV"):
-        sys.exit("the oracle packages did not import even in .lake/oracle-venv")
+        sys.exit("the pinned oracle packages, with the upb backend, are not usable even in "
+                 ".lake/oracle-venv")
     python = VENV / "bin" / "python"
     made = python.exists() or subprocess.run(
         [sys.executable, "-m", "venv", str(VENV)], capture_output=True).returncode == 0
     if made and not os.environ.get("PROTOWIRE_NO_VENV"):
         subprocess.run([str(python), "-m", "pip", "install", "--quiet", *PINS], check=True)
         env = dict(os.environ, PROTOWIRE_ORACLE_VENV="1")
+        env.pop("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", None)
         os.execve(str(python), [str(python), *sys.argv], env)
     subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "--break-system-packages",
                     "--target", str(PKGS), *PINS], check=True)
     sys.path.insert(0, str(PKGS))
+    os.environ.pop("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", None)
+    for name in [m for m in sys.modules if m.startswith(("google", "grpc_tools"))]:
+        del sys.modules[name]
+    if not oracles_ready():
+        sys.exit("the pinned oracle packages, with the upb backend, are not usable")
+
+
+def oracles_ready():
+    """Whether the pinned oracle versions import, with protobuf on upb."""
+    from importlib.metadata import PackageNotFoundError, version
+    try:
+        import grpc_tools  # noqa: F401
+        from google.protobuf.internal import api_implementation
+        versions = [f"{p.split('==')[0]}=={version(p.split('==')[0])}" for p in PINS]
+    except (ImportError, PackageNotFoundError):
+        return False
+    return versions == PINS and api_implementation.Type() == "upb"
 
 
 # The oracles.
@@ -325,8 +342,9 @@ def mutate(rng, data):
             rec += varint(random_number(rng) * 8) + varint(5) + varint(n * 8 + 4)
         b = bytearray(rec) + b
     elif op == 9:
-        # A five-byte tag of 2^32 or more.
-        t = rng.randint(2 ** 32, 2 ** 35 - 1)
+        # A five-byte tag of 2^32 or more, often exactly 2^32 plus a wire
+        # type: field number 2^29, one past the largest.
+        t = rng.choice([2 ** 32 + rng.choice([0, 1, 2, 5]), rng.randint(2 ** 32, 2 ** 35 - 1)])
         b = bytearray(long_varint(t, 5) + varint(1)) + b
     else:
         # A length varint longer than it needs to be, or past the end.
@@ -372,9 +390,13 @@ MALFORMED = [
     ("encode 1:len:0", "odd hex in a len value"),
     ("encode x:varint:1", "a field number that is not a number"),
     (" decode 00", "a leading space"),
+    ("", "an empty line"),
+    ("decode 0896\r01", "a CR inside the request"),
+    ("encode 1:varint:" + "1" * 31, "a number of more than 30 digits"),
 ]
 
-AT_EOF = [("decode 089601", "OK\t1:varint:150"), ("encode 1:varint:150", "089601")]
+AT_EOF = [("decode 089601", "OK\t1:varint:150"), ("encode 1:varint:150", "089601"),
+          ("decode 089601\r\n", "OK\t1:varint:150")]
 
 
 def fields_text(fields):
@@ -472,7 +494,9 @@ def run_tool(data, timeout=TIMEOUT):
 
 def oracle():
     from importlib.metadata import version
-    return (f"Python {platform.python_version()}, protobuf {version('protobuf')} (upb), "
+    from google.protobuf.internal import api_implementation
+    return (f"Python {platform.python_version()}, protobuf {version('protobuf')} "
+            f"({api_implementation.Type()}), "
             f"grpcio-tools {version('grpcio-tools')} (protoc --decode_raw, C++)")
 
 
@@ -518,13 +542,21 @@ def main():
 
     tally = {}
     items = list(cases(args.seed, args.count, tally))
-    out, problem = run_tool("".join(req + "\n" for _, req, _, _ in items))
+    # Every seventh request ends in CR LF, which the tool must take as LF.
+    out, problem = run_tool("".join(req + ("\r\n" if i % 7 == 6 else "\n")
+                                    for i, (_, req, _, _) in enumerate(items)))
     failures = [("(whole run)", "a clean run", problem)] if problem else []
     for item, got in itertools.zip_longest(items, out):
         if item is None:
             failures.append(("(no request)", "nothing", got))
         elif got != item[2]:
             failures.append((item[1], item[2], "(no answer)" if got is None else got))
+    # The two parsers may disagree only in the ways the module comment
+    # names; any other disagreement means an oracle changed.
+    for reason, n in tally.items():
+        if reason.startswith("other") or reason.startswith("C++ and upb read different"):
+            failures.append((f"{n} inputs", "only the known disagreements", reason))
+
     eof_right = 0
     for req, want in AT_EOF:
         got, problem = run_tool(req, timeout=60)
@@ -558,7 +590,9 @@ def main():
         (", ".join(f"{k} {v}" for k, v in sorted(tally.items())) or "none"),
         f"- Malformed requests answered `error`: {malformed.count('error')} of "
         f"{by_label.get('error', 0)}",
-        f"- Last lines with no LF, sent alone, answered right: {eof_right} of {len(AT_EOF)}",
+        f"- Requests ending in CR LF: every seventh, {len(items) // 7}",
+        f"- Last lines sent alone, with no LF or with CR LF, answered right: {eof_right} of "
+        f"{len(AT_EOF)}",
         f"- Failures: {len(failures)}",
         "",
     ]
