@@ -1,0 +1,16 @@
+name = "protobuf"
+version = "0.1.0"
+defaultTargets = ["Protobuf", "Spec", "Proofs", "protowire"]
+
+[[lean_lib]]
+name = "Protobuf"
+
+[[lean_lib]]
+name = "Spec"
+
+[[lean_lib]]
+name = "Proofs"
+
+[[lean_exe]]
+name = "protowire"
+root = "Main"
