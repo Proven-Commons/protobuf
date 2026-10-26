@@ -1,0 +1,35 @@
+# Read by bar/check.py in Proven-Commons/mission.
+# See playbook/verified-bar.md there for what each field means.
+
+[project]
+name = "protobuf"
+# "in-progress" until every bar item passes, then "verified".
+status = "in-progress"
+page = "README.md"
+# GitHub handles of everyone who wrote the specification. It was drafted
+# by Claude, an AI agent, for the org.
+spec_authors = ["claude"]
+# The program people run. A change to it voids the approval.
+entry_points = ["Main.lean"]
+
+[spec]
+# Protobuf/Types.lean holds the types every statement is about, so it
+# is part of the specification.
+files = ["SPEC.md", "Spec.lean", "Spec/Defs.lean", "Protobuf/Types.lean"]
+# The code under proof: the functions the statements are about.
+code = [
+  "Protobuf.Varint.encode", "Protobuf.Varint.decode",
+  "Protobuf.encode", "Protobuf.decode", "Protobuf.Field.isValid",
+]
+
+# One entry per approval, added in a pull request the reviewer approves.
+# [[spec.approval]]
+# reviewer = "github-handle"
+# date = "2026-11-02"
+# sha256 = "..."
+# record = "https://github.com/Proven-Commons/protobuf/pull/<n>"
+
+[tests]
+results = "tests/TEST-RESULTS.md"
+command = "python3 tests/run_tests.py"
+files = ["tests/run_tests.py", "tests/planted_bugs.py"]

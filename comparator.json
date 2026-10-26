@@ -1,0 +1,10 @@
+{
+  "challenge_module": "Spec",
+  "solution_module": "Proofs",
+  "theorem_names": [
+    "Spec.varint_encode_eq", "Spec.varint_decode_iff", "Spec.varint_decode_encode",
+    "Spec.isValid_iff", "Spec.encode_eq", "Spec.decode_iff", "Spec.decode_encode",
+    "Spec.decode_valid", "Spec.guide_vectors", "Spec.edge_vectors", "Spec.reject_vectors"
+  ],
+  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
+}
