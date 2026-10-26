@@ -33,3 +33,19 @@ Checked in its own run, since its encoding is an empty line: `enc ` prints an em
 ## Failures
 
 None.
+
+## Axiom check
+
+Recorded on 2026-10-26 against the head of this pull request, on Lean 4.35.0. The lines below are the output of the `#print axioms` commands in `Protobuf/Verify.lean`, run with `lake env lean Protobuf/Verify.lean` after a clean `lake build` (13 jobs).
+
+```text
+'Protobuf.Proofs.decodeVarint_encode' depends on axioms: [propext, Quot.sound]
+'Protobuf.Proofs.decodeVarint_encode_append' depends on axioms: [propext, Quot.sound]
+'Protobuf.Proofs.parseField_encode' depends on axioms: [propext, Quot.sound]
+'Protobuf.Proofs.decodeMessage_encode' depends on axioms: [propext, Quot.sound]
+'Protobuf.Examples.encodeVarint_300' depends on axioms: [propext, Quot.sound]
+'Protobuf.Examples.decode_test1' does not depend on any axioms
+'Protobuf.Examples.decode_test2' does not depend on any axioms
+```
+
+No line names sorryAx. No line names Classical.choice.
