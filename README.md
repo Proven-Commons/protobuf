@@ -77,7 +77,7 @@ python3 tests/run_tests.py
 
 `lake comparator --paranoid` builds the statements and the proofs in a sandbox. It checks that each theorem in `Proofs/` proves exactly the statement in `Spec.lean`, using only the axioms `propext`, `Classical.choice`, and `Quot.sound`, and replays it through every kernel shipped with Lean.
 
-The test script installs the pinned oracle packages into `.lake/oracle-venv` when they are missing. It then compares the tool with upb and with the C++ parser on inputs from a recorded seed, and rewrites `tests/TEST-RESULTS.md`.
+The test script installs the pinned oracle packages into `.lake/oracle-venv` when they are missing. It then compares the tool with upb and with the C++ parser on inputs from a recorded seed, and rewrites `tests/TEST-RESULTS.md`. `tests/planted_bugs.py` plants ten small bugs in a copy of the code, and `tests/PLANTED-BUGS.md` records that the tests catch nine; the tenth, a missing `LEN` length limit, needs a 2 GiB input to show, so it rests on `Spec.decode_iff`.
 
 ## Layout
 
