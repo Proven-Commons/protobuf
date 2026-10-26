@@ -6,9 +6,9 @@ make by mistake: to the code under proof, or to the request handling in
 Main.lean. For each one, this script copies the project into a temporary
 directory, makes the change there, builds the command-line tool, and
 runs the differential tests on a given number of inputs. The tests catch
-the bug when they report failures. The proofs would catch every change
-to the code under proof too, since that code no longer meets its
-statements; Main.lean is outside the proofs. This script checks the
+the bug when they report failures. A change that alters an answer of
+the code under proof also breaks the proofs, since that code no longer
+meets its statements; Main.lean is outside the proofs. This script checks the
 tests on their own, so it builds only the tool, not the proofs.
 
 The project itself is never changed. The script writes the results to
@@ -58,7 +58,7 @@ BUGS = [
      "it shows only when a length of 2^31 - 16 or more is followed by that many bytes, "
      "an input of about 2 GiB; a shorter input with such a length is refused for running "
      "out of input either way. `Spec.decode_iff` covers the limit."),
-    ("Groups read as empty LEN fields", "Protobuf/Wire.lean",
+    ("A group start tag read as an empty LEN field", "Protobuf/Wire.lean",
      "      | _ => none",
      "      | 3 => some (⟨n, .len []⟩, rest)\n      | _ => none", None),
     ("isValid takes field number 2^29", "Protobuf/Wire.lean",
@@ -94,6 +94,8 @@ def run(count):
                                   cwd=work, capture_output=True, text=True)
             path.write_text(original)
             n = failures(test.stdout + test.stderr)
+            if n is None:
+                sys.exit(f"{name}: the tests gave no failure count\n{(test.stdout + test.stderr)[-2000:]}")
             rows.append((name, rel, old, new, missed, n))
             print(f"{name}: {n} failures", flush=True)
     return rows

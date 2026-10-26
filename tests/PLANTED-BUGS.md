@@ -13,7 +13,7 @@ against the changed tool. A bug is caught when they report failures.
 | Eleven-byte varints read | `Protobuf/Varint.lean` | 70 |
 | Bits past the 64th kept | `Protobuf/Varint.lean` | 23 |
 | No LEN length limit | `Protobuf/Wire.lean` | 0, not caught by the tests: it shows only when a length of 2^31 - 16 or more is followed by that many bytes, an input of about 2 GiB; a shorter input with such a length is refused for running out of input either way. `Spec.decode_iff` covers the limit. |
-| Groups read as empty LEN fields | `Protobuf/Wire.lean` | 150 |
+| A group start tag read as an empty LEN field | `Protobuf/Wire.lean` | 150 |
 | isValid takes field number 2^29 | `Protobuf/Wire.lean` | 90 |
 | CR kept at the end of a CR LF request | `Main.lean` | 2856 |
 
@@ -68,7 +68,7 @@ against the changed tool. A bug is caught when they report failures.
 + if (rest.take len).length < len then none
 ```
 
-**Groups read as empty LEN fields** in `Protobuf/Wire.lean`:
+**A group start tag read as an empty LEN field** in `Protobuf/Wire.lean`:
 
 ```
 -       | _ => none

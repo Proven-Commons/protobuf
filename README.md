@@ -92,3 +92,4 @@ The test script installs the pinned oracle packages into `.lake/oracle-venv` whe
 - `bar.toml`: the record for the bar check: status, authors, approvals, and where things are.
 - `SPEC.md`: the specification in plain words.
 - `tests/run_tests.py`: the differential tests.
+- `tests/planted_bugs.py`: plants small bugs in a copy of the code, and records in `tests/PLANTED-BUGS.md` whether the tests catch each one.
