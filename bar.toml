@@ -7,10 +7,11 @@ name = "protobuf"
 status = "in-progress"
 page = "README.md"
 # GitHub handles of everyone who wrote the specification. It was drafted
-# by Claude, an AI agent, for the org, from the ahrazzle account. The
-# agent commits as Claude <noreply@anthropic.com>, which GitHub shows as
-# the login claude, and opens its pull requests from ahrazzle.
-spec_authors = ["ahrazzle", "claude"]
+# by Claude, an AI agent, for the org. The agent commits as Claude
+# <noreply@anthropic.com>, which GitHub shows as the login claude. It
+# pushes its branches from the ahrazzle account, and opens pull requests
+# and posts comments from ahrazzle and ibn-aska. So all three are listed.
+spec_authors = ["ahrazzle", "claude", "ibn-aska"]
 # The program people run. A change to it voids the approval.
 entry_points = ["Main.lean"]
 
