@@ -1,10 +1,22 @@
 {
-  "challenge_module": "Spec",
-  "solution_module": "Proofs",
+  "challenge_module": "Protobuf.Spec",
+  "solution_module": "Protobuf.Proofs",
   "theorem_names": [
-    "Spec.varint_encode_eq", "Spec.varint_decode_iff", "Spec.varint_decode_encode",
-    "Spec.isValid_iff", "Spec.encode_eq", "Spec.decode_iff", "Spec.decode_encode",
-    "Spec.decode_valid", "Spec.guide_vectors", "Spec.edge_vectors", "Spec.reject_vectors"
+    "Protobuf.Spec.varint_encode_eq",
+    "Protobuf.Spec.varint_decode_iff",
+    "Protobuf.Spec.varint_decode_encode",
+    "Protobuf.Spec.isValid_iff",
+    "Protobuf.Spec.encode_eq",
+    "Protobuf.Spec.decode_iff",
+    "Protobuf.Spec.decode_encode",
+    "Protobuf.Spec.decode_valid",
+    "Protobuf.Spec.guide_vectors",
+    "Protobuf.Spec.edge_vectors",
+    "Protobuf.Spec.reject_vectors"
   ],
-  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ]
 }

@@ -1,10 +1,10 @@
 /-
   What a message is on the wire: a list of fields, each a field number
   and a raw value of one of four wire types. Part of the approved
-  specification, with `Spec.lean` and `Spec/Defs.lean`, since every
+  specification, with `Protobuf/Spec.lean` and `Spec/Defs.lean`, since every
   statement is about these types.
 
-  Which values are in range is `Spec.ValidField`, in `Spec/Defs.lean`.
+  Which values are in range is `Protobuf.Spec.ValidField`, in `Spec/Defs.lean`.
 -/
 
 namespace Protobuf

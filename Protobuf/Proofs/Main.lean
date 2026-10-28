@@ -1,48 +1,48 @@
 /-
-  The statements of `Spec.lean`, under the same names, from the lemmas
-  in the other files of `Proofs/`. The test vectors are checked by
+  The statements of `Protobuf/Spec.lean`, under the same names, from the lemmas
+  in the other files of `Protobuf/Proofs/`. The test vectors are checked by
   evaluation.
 -/
 
 import Protobuf
-import Spec.Defs
-import Proofs.Varint
-import Proofs.Message
+import Protobuf.Spec.Defs
+import Protobuf.Proofs.Varint
+import Protobuf.Proofs.Message
 
 open Protobuf
 open Protobuf.Proofs
 
-theorem Spec.varint_encode_eq (n : Nat) (h : n < 2 ^ 64) : Varint.encode n = Spec.varint n :=
+theorem Protobuf.Spec.varint_encode_eq (n : Nat) (h : n < 2 ^ 64) : Varint.encode n = Protobuf.Spec.varint n :=
   Protobuf.Proofs.Varint.encode_eq n h
 
-theorem Spec.varint_decode_iff (bs : List UInt8) (v : Nat) (rest : List UInt8) :
-    Varint.decode bs = some (v, rest) ↔ ∃ pre, bs = pre ++ rest ∧ Spec.IsVarint pre v :=
+theorem Protobuf.Spec.varint_decode_iff (bs : List UInt8) (v : Nat) (rest : List UInt8) :
+    Varint.decode bs = some (v, rest) ↔ ∃ pre, bs = pre ++ rest ∧ Protobuf.Spec.IsVarint pre v :=
   Protobuf.Proofs.Varint.decode_iff bs v rest
 
-theorem Spec.varint_decode_encode (n : Nat) (rest : List UInt8) (h : n < 2 ^ 64) :
+theorem Protobuf.Spec.varint_decode_encode (n : Nat) (rest : List UInt8) (h : n < 2 ^ 64) :
     Varint.decode (Varint.encode n ++ rest) = some (n, rest) :=
   Protobuf.Proofs.Varint.decode_encode n rest h
 
-theorem Spec.isValid_iff (f : Field) : f.isValid = true ↔ Spec.ValidField f :=
+theorem Protobuf.Spec.isValid_iff (f : Field) : f.isValid = true ↔ Protobuf.Spec.ValidField f :=
   Protobuf.Proofs.Message.isValid_iff f
 
-theorem Spec.encode_eq (fs : List Field) (h : ∀ f ∈ fs, Spec.ValidField f) :
-    Protobuf.encode fs = Spec.encode fs :=
+theorem Protobuf.Spec.encode_eq (fs : List Field) (h : ∀ f ∈ fs, Protobuf.Spec.ValidField f) :
+    Protobuf.encode fs = Protobuf.Spec.encode fs :=
   Protobuf.Proofs.Message.encode_eq fs h
 
-theorem Spec.decode_iff (bs : List UInt8) (fs : List Field) :
-    decode bs = some fs ↔ Spec.Message bs fs :=
+theorem Protobuf.Spec.decode_iff (bs : List UInt8) (fs : List Field) :
+    decode bs = some fs ↔ Protobuf.Spec.Message bs fs :=
   Protobuf.Proofs.Message.decode_iff bs fs
 
-theorem Spec.decode_encode (fs : List Field) (h : ∀ f ∈ fs, Spec.ValidField f) :
+theorem Protobuf.Spec.decode_encode (fs : List Field) (h : ∀ f ∈ fs, Protobuf.Spec.ValidField f) :
     decode (Protobuf.encode fs) = some fs :=
   Protobuf.Proofs.Message.decode_encode fs h
 
-theorem Spec.decode_valid (bs : List UInt8) (fs : List Field) (h : decode bs = some fs) :
-    ∀ f ∈ fs, Spec.ValidField f :=
+theorem Protobuf.Spec.decode_valid (bs : List UInt8) (fs : List Field) (h : decode bs = some fs) :
+    ∀ f ∈ fs, Protobuf.Spec.ValidField f :=
   Protobuf.Proofs.Message.decode_valid bs fs h
 
-theorem Spec.guide_vectors :
+theorem Protobuf.Spec.guide_vectors :
     Varint.encode 1 = [0x01] ∧
     Varint.encode 150 = [0x96, 0x01] ∧
     Varint.encode (2 ^ 64 - 2) = [0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01] ∧
@@ -56,7 +56,7 @@ theorem Spec.guide_vectors :
       [0x08, 0x96, 0x01, 0x12, 0x07, 0x74, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x67] := by
   decide
 
-theorem Spec.edge_vectors :
+theorem Protobuf.Spec.edge_vectors :
     Varint.encode (2 ^ 64 - 1) = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01] ∧
     decode [0x0d, 0x01, 0x02, 0x03, 0x04] = some [⟨1, .i32 0x04030201⟩] ∧
     decode [0x09, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08] =
@@ -68,7 +68,7 @@ theorem Spec.edge_vectors :
     decode [] = some [] := by
   decide
 
-theorem Spec.reject_vectors :
+theorem Protobuf.Spec.reject_vectors :
     decode [0x08] = none ∧
     decode [0x08, 0x80] = none ∧
     decode [0x08, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00] = none ∧

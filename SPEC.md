@@ -1,6 +1,6 @@
 # Specification: protobuf
 
-This library implements the Protobuf wire format: varints, field tags, and messages as lists of raw fields. It is the layer under every `.proto` schema. It reads and writes the bytes without knowing what the fields mean. A reviewer who did not write this specification approves it. The approval also covers `Spec.lean`, `Spec/Defs.lean`, `Protobuf/Types.lean`, and the other files `bar.toml` lists.
+This library implements the Protobuf wire format: varints, field tags, and messages as lists of raw fields. It is the layer under every `.proto` schema. It reads and writes the bytes without knowing what the fields mean. A reviewer who did not write this specification approves it. The approval also covers `Protobuf/Spec.lean`, `Protobuf/Spec/Defs.lean`, `Protobuf/Types.lean`, and the other files `bar.toml` lists.
 
 The source is the Protobuf encoding guide, <https://protobuf.dev/programming-guides/encoding/>. Where the guide leaves a choice, the source is the behaviour of Google's two parsers: upb, which Python's `protobuf` package uses, and the C++ parser behind `protoc --decode_raw`.
 
@@ -66,29 +66,29 @@ The two reference parsers differ in three places, and this library takes the str
 
 ## What must always hold
 
-Each property is a theorem in `Spec.lean`, under the name given. The definitions the statements use are in `Spec/Defs.lean`. They are written from the encoding guide and checked against its worked bytes.
+Each property is a theorem in `Protobuf/Spec.lean`, under the name given. The definitions the statements use are in `Protobuf/Spec/Defs.lean`. They are written from the encoding guide and checked against its worked bytes.
 
 | Property | Theorem |
 |----------|---------|
-| For numbers below 2^64, the encoder writes the shortest varint. | `Spec.varint_encode_eq` |
-| The varint decoder reads exactly one varint of up to ten bytes from the front of its input, keeps the rest untouched, and refuses everything else. | `Spec.varint_decode_iff` |
-| For numbers below 2^64, decoding a varint the encoder wrote gives the number back. | `Spec.varint_decode_encode` |
-| `isValid` decides exactly which fields can be written. | `Spec.isValid_iff` |
-| For valid fields, the encoder writes each field as the guide describes. | `Spec.encode_eq` |
-| `decode` returns a field list exactly when the bytes split into records, one per field, in order, by the rules above. | `Spec.decode_iff` |
-| For valid fields, decoding what the encoder wrote gives the fields back. | `Spec.decode_encode` |
-| Every field the decoder returns can be written again. | `Spec.decode_valid` |
-| The guide's worked bytes: 1, 150 and -2 as varints, and its messages `Test1` to `Test4`. | `Spec.guide_vectors` |
-| 2^64 - 1 is ten bytes, fixed-width values are little-endian, varints need not be in shortest form, ten-byte varints drop bits past the 64th, the largest field number reads, and so does the empty message. | `Spec.edge_vectors` |
-| The decoder refuses each kind of malformed input listed above, except a length of 2^31 - 16 or more, which needs a 2 GiB input; `Spec.decode_iff` covers it. | `Spec.reject_vectors` |
+| For numbers below 2^64, the encoder writes the shortest varint. | `Protobuf.Spec.varint_encode_eq` |
+| The varint decoder reads exactly one varint of up to ten bytes from the front of its input, keeps the rest untouched, and refuses everything else. | `Protobuf.Spec.varint_decode_iff` |
+| For numbers below 2^64, decoding a varint the encoder wrote gives the number back. | `Protobuf.Spec.varint_decode_encode` |
+| `isValid` decides exactly which fields can be written. | `Protobuf.Spec.isValid_iff` |
+| For valid fields, the encoder writes each field as the guide describes. | `Protobuf.Spec.encode_eq` |
+| `decode` returns a field list exactly when the bytes split into records, one per field, in order, by the rules above. | `Protobuf.Spec.decode_iff` |
+| For valid fields, decoding what the encoder wrote gives the fields back. | `Protobuf.Spec.decode_encode` |
+| Every field the decoder returns can be written again. | `Protobuf.Spec.decode_valid` |
+| The guide's worked bytes: 1, 150 and -2 as varints, and its messages `Test1` to `Test4`. | `Protobuf.Spec.guide_vectors` |
+| 2^64 - 1 is ten bytes, fixed-width values are little-endian, varints need not be in shortest form, ten-byte varints drop bits past the 64th, the largest field number reads, and so does the empty message. | `Protobuf.Spec.edge_vectors` |
+| The decoder refuses each kind of malformed input listed above, except a length of 2^31 - 16 or more, which needs a 2 GiB input; `Protobuf.Spec.decode_iff` covers it. | `Protobuf.Spec.reject_vectors` |
 
 Together, these fix every output.
 
 - `decode` is fixed for every input.
 - `encode` and `Varint.encode` are fixed for every valid input.
-- A decoder that accepted nothing would meet `Spec.decode_valid`, but it would fail `Spec.decode_iff` and `Spec.decode_encode`.
+- A decoder that accepted nothing would meet `Protobuf.Spec.decode_valid`, but it would fail `Protobuf.Spec.decode_iff` and `Protobuf.Spec.decode_encode`.
 - `encode` is not fixed for fields that are not valid.
-- A decoder that accepted too much would fail `Spec.decode_iff`.
+- A decoder that accepted too much would fail `Protobuf.Spec.decode_iff`.
 
 ## Oracle
 
