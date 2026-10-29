@@ -8,7 +8,7 @@
   file only.
 
   The definitions the statements use, written from the Protobuf encoding
-  guide, are in `Spec/Defs.lean`, and the types in `Protobuf/Types.lean`.
+  guide, are in `Protobuf/Spec/Defs.lean`, and the types in `Protobuf/Types.lean`.
   Both are part of the specification too.
 -/
 
