@@ -25,19 +25,19 @@ From Lean:
 
 ## What is proved
 
-The statements are in `Spec.lean`. The definitions they use, written from the encoding guide, are in `Spec/Defs.lean`, and the types are in `Protobuf/Types.lean`. The proofs are in `Proofs/`.
+The statements are in `Protobuf/Spec.lean`. The definitions they use, written from the encoding guide, are in `Protobuf/Spec/Defs.lean`, and the types are in `Protobuf/Types.lean`. The proofs are in `Protobuf/Proofs/`.
 
 | Claim | Theorem |
 |-------|---------|
-| For numbers below 2^64, the encoder writes the shortest varint. | `Spec.varint_encode_eq` |
-| The varint decoder reads exactly one varint of up to ten bytes from the front of its input, leaves the rest untouched, and refuses everything else. That includes input that ends inside the varint, and an eleventh byte. | `Spec.varint_decode_iff` |
-| For numbers below 2^64, decoding a varint the encoder wrote gives the number back. | `Spec.varint_decode_encode` |
-| `isValid` decides exactly which fields can be written: field numbers 1 to 2^29 - 1, values that fit their wire type, and bytes shorter than 2^31 - 16. | `Spec.isValid_iff` |
-| For valid fields, the encoder writes each field as the guide describes: the tag, then the payload, every varint in its shortest form. | `Spec.encode_eq` |
-| `decode` returns a field list exactly when the bytes split into records, one per field, in order, by the rules in `SPEC.md`. So it reads every message made of `VARINT`, `I64`, `LEN` and `I32` records with field numbers from 1 to 2^29 - 1, and returns the fields as written. It refuses everything else: a record cut short, a length past the end, field number 0, a group, an unknown wire type, and an oversized tag or length. | `Spec.decode_iff` |
-| For valid fields, decoding what the encoder wrote gives the fields back. | `Spec.decode_encode` |
-| Every field the decoder returns can be written again. | `Spec.decode_valid` |
-| The guide's worked bytes (1, 150 and -2 as varints, and its messages `Test1` to `Test4`), and the edge and refusal cases listed in `SPEC.md`. | `Spec.guide_vectors`, `Spec.edge_vectors`, `Spec.reject_vectors` |
+| For numbers below 2^64, the encoder writes the shortest varint. | `Protobuf.Spec.varint_encode_eq` |
+| The varint decoder reads exactly one varint of up to ten bytes from the front of its input, leaves the rest untouched, and refuses everything else. That includes input that ends inside the varint, and an eleventh byte. | `Protobuf.Spec.varint_decode_iff` |
+| For numbers below 2^64, decoding a varint the encoder wrote gives the number back. | `Protobuf.Spec.varint_decode_encode` |
+| `isValid` decides exactly which fields can be written: field numbers 1 to 2^29 - 1, values that fit their wire type, and bytes shorter than 2^31 - 16. | `Protobuf.Spec.isValid_iff` |
+| For valid fields, the encoder writes each field as the guide describes: the tag, then the payload, every varint in its shortest form. | `Protobuf.Spec.encode_eq` |
+| `decode` returns a field list exactly when the bytes split into records, one per field, in order, by the rules in `SPEC.md`. So it reads every message made of `VARINT`, `I64`, `LEN` and `I32` records with field numbers from 1 to 2^29 - 1, and returns the fields as written. It refuses everything else: a record cut short, a length past the end, field number 0, a group, an unknown wire type, and an oversized tag or length. | `Protobuf.Spec.decode_iff` |
+| For valid fields, decoding what the encoder wrote gives the fields back. | `Protobuf.Spec.decode_encode` |
+| Every field the decoder returns can be written again. | `Protobuf.Spec.decode_valid` |
+| The guide's worked bytes (1, 150 and -2 as varints, and its messages `Test1` to `Test4`), and the edge and refusal cases listed in `SPEC.md`. | `Protobuf.Spec.guide_vectors`, `Protobuf.Spec.edge_vectors`, `Protobuf.Spec.reject_vectors` |
 
 The command-line tool in `Main.lean` calls these functions directly.
 
@@ -75,17 +75,17 @@ lake comparator --paranoid
 python3 tests/run_tests.py
 ```
 
-`lake comparator --paranoid` builds the statements and the proofs in a sandbox. It checks that each theorem in `Proofs/` proves exactly the statement in `Spec.lean`, using only the axioms `propext`, `Classical.choice`, and `Quot.sound`, and replays it through every kernel shipped with Lean.
+`lake comparator --paranoid` builds the statements and the proofs in a sandbox. It checks that each theorem in `Protobuf/Proofs/` proves exactly the statement in `Protobuf/Spec.lean`, using only the axioms `propext`, `Classical.choice`, and `Quot.sound`, and replays it through every kernel shipped with Lean.
 
-The test script installs the pinned oracle packages into `.lake/oracle-venv` when they are missing. It then compares the tool with upb and with the C++ parser on inputs from a recorded seed, and rewrites `tests/TEST-RESULTS.md`. `tests/planted_bugs.py` plants ten small bugs in a copy of the code, and `tests/PLANTED-BUGS.md` records that the tests catch nine; the tenth, a missing `LEN` length limit, needs a 2 GiB input to show, so it rests on `Spec.decode_iff`.
+The test script installs the pinned oracle packages into `.lake/oracle-venv` when they are missing. It then compares the tool with upb and with the C++ parser on inputs from a recorded seed, and rewrites `tests/TEST-RESULTS.md`. `tests/planted_bugs.py` plants ten small bugs in a copy of the code, and `tests/PLANTED-BUGS.md` records that the tests catch nine; the tenth, a missing `LEN` length limit, needs a 2 GiB input to show, so it rests on `Protobuf.Spec.decode_iff`.
 
 ## Layout
 
 - `Protobuf/Types.lean`: the field and value types. It is part of the specification.
 - `Protobuf/Varint.lean`, `Protobuf/Wire.lean`: the code under proof.
-- `Spec.lean`: the statements, with `sorry` for proofs. A reviewer approves this file.
-- `Spec/Defs.lean`: the definitions the statements use, written from the encoding guide, with checks against its worked bytes.
-- `Proofs.lean` and `Proofs/`: the proofs, under the same names.
+- `Protobuf/Spec.lean`: the statements, with `sorry` for proofs. A reviewer approves this file.
+- `Protobuf/Spec/Defs.lean`: the definitions the statements use, written from the encoding guide, with checks against its worked bytes.
+- `Protobuf/Proofs.lean` and `Protobuf/Proofs/`: the proofs, under the same names.
 - `Main.lean`: the command-line tool the tests drive.
 - `lakefile.toml`: the build. It names the package and its version, its libraries and executable, and the default targets, and sets nothing else.
 - `comparator.json`: which theorems `lake comparator` checks, and which axioms it allows.

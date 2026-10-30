@@ -2,66 +2,66 @@
   The specification as Lean statements: the challenge file.
 
   A reviewer who did not write this file approves it, and `bar.toml`
-  records the hash it had then. The proofs live in `Proofs.lean`, under
+  records the hash it had then. The proofs live in `Protobuf/Proofs.lean`, under
   the same names; `lake comparator` checks that each one proves exactly
   the statement written here. The `sorry`s below are expected in this
   file only.
 
   The definitions the statements use, written from the Protobuf encoding
-  guide, are in `Spec/Defs.lean`, and the types in `Protobuf/Types.lean`.
+  guide, are in `Protobuf/Spec/Defs.lean`, and the types in `Protobuf/Types.lean`.
   Both are part of the specification too.
 -/
 
 import Protobuf
-import Spec.Defs
+import Protobuf.Spec.Defs
 
 open Protobuf
 
 /-! ## Varints -/
 
 /-- The encoder writes the shortest varint. -/
-theorem Spec.varint_encode_eq (n : Nat) (h : n < 2 ^ 64) : Varint.encode n = Spec.varint n := sorry
+theorem Protobuf.Spec.varint_encode_eq (n : Nat) (h : n < 2 ^ 64) : Varint.encode n = Protobuf.Spec.varint n := sorry
 
 /-- The decoder reads exactly one varint from the front of its input:
     up to ten bytes, the last without its high bit, and returns its
     value and the rest of the input untouched. Anything else, including
     input that ends inside the varint and an eleventh byte, is
     refused. -/
-theorem Spec.varint_decode_iff (bs : List UInt8) (v : Nat) (rest : List UInt8) :
-    Varint.decode bs = some (v, rest) ↔ ∃ pre, bs = pre ++ rest ∧ Spec.IsVarint pre v := sorry
+theorem Protobuf.Spec.varint_decode_iff (bs : List UInt8) (v : Nat) (rest : List UInt8) :
+    Varint.decode bs = some (v, rest) ↔ ∃ pre, bs = pre ++ rest ∧ Protobuf.Spec.IsVarint pre v := sorry
 
 /-- Round trip: decoding what the encoder wrote gives the number back,
     and leaves what follows untouched. -/
-theorem Spec.varint_decode_encode (n : Nat) (rest : List UInt8) (h : n < 2 ^ 64) :
+theorem Protobuf.Spec.varint_decode_encode (n : Nat) (rest : List UInt8) (h : n < 2 ^ 64) :
     Varint.decode (Varint.encode n ++ rest) = some (n, rest) := sorry
 
 /-! ## Messages -/
 
 /-- `isValid` decides exactly which fields can be written. -/
-theorem Spec.isValid_iff (f : Field) : f.isValid = true ↔ Spec.ValidField f := sorry
+theorem Protobuf.Spec.isValid_iff (f : Field) : f.isValid = true ↔ Protobuf.Spec.ValidField f := sorry
 
 /-- The encoder writes each field as the encoding guide describes, with
     every varint in its shortest form. -/
-theorem Spec.encode_eq (fs : List Field) (h : ∀ f ∈ fs, Spec.ValidField f) :
-    Protobuf.encode fs = Spec.encode fs := sorry
+theorem Protobuf.Spec.encode_eq (fs : List Field) (h : ∀ f ∈ fs, Protobuf.Spec.ValidField f) :
+    Protobuf.encode fs = Protobuf.Spec.encode fs := sorry
 
 /-- `decode` returns `fs` exactly when the bytes split into records, one
-    per field of `fs`, in order, by the rules of `Spec.FieldBytes`. So it
+    per field of `fs`, in order, by the rules of `Protobuf.Spec.FieldBytes`. So it
     reads every message made of `VARINT`, `I64`, `LEN` and `I32` records
     with field numbers from 1 to 2^29 - 1, refuses everything else (a
     record cut short, a length past the end, field number 0, a group, an
     unknown wire type, an oversized tag or length), and returns the
     fields as written. -/
-theorem Spec.decode_iff (bs : List UInt8) (fs : List Field) :
-    decode bs = some fs ↔ Spec.Message bs fs := sorry
+theorem Protobuf.Spec.decode_iff (bs : List UInt8) (fs : List Field) :
+    decode bs = some fs ↔ Protobuf.Spec.Message bs fs := sorry
 
 /-- Round trip: decoding what the encoder wrote gives the fields back. -/
-theorem Spec.decode_encode (fs : List Field) (h : ∀ f ∈ fs, Spec.ValidField f) :
+theorem Protobuf.Spec.decode_encode (fs : List Field) (h : ∀ f ∈ fs, Protobuf.Spec.ValidField f) :
     decode (Protobuf.encode fs) = some fs := sorry
 
 /-- Every field the decoder returns can be written again. -/
-theorem Spec.decode_valid (bs : List UInt8) (fs : List Field) (h : decode bs = some fs) :
-    ∀ f ∈ fs, Spec.ValidField f := sorry
+theorem Protobuf.Spec.decode_valid (bs : List UInt8) (fs : List Field) (h : decode bs = some fs) :
+    ∀ f ∈ fs, Protobuf.Spec.ValidField f := sorry
 
 /-! ## Test vectors -/
 
@@ -70,7 +70,7 @@ theorem Spec.decode_valid (bs : List UInt8) (fs : List Field) (h : decode bs = s
     field 1 set to 150, `Test2` with field 2 set to "testing", `Test3`
     holding the first message in field 3, and `Test4` with field 4 set
     to "hello" and field 5 packed with 1, 2 and 3. -/
-theorem Spec.guide_vectors :
+theorem Protobuf.Spec.guide_vectors :
     Varint.encode 1 = [0x01] ∧
     Varint.encode 150 = [0x96, 0x01] ∧
     Varint.encode (2 ^ 64 - 2) = [0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01] ∧
@@ -88,7 +88,7 @@ theorem Spec.guide_vectors :
     parsers' readings of unusual varints, not in shortest form, and ten
     bytes with bits past the 64th; the largest field number; and the
     empty message. -/
-theorem Spec.edge_vectors :
+theorem Protobuf.Spec.edge_vectors :
     Varint.encode (2 ^ 64 - 1) = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01] ∧
     decode [0x0d, 0x01, 0x02, 0x03, 0x04] = some [⟨1, .i32 0x04030201⟩] ∧
     decode [0x09, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08] =
@@ -104,7 +104,7 @@ theorem Spec.edge_vectors :
     short, a group start and a group end, wire types 6 and 7, a tag of
     2^32 or more (from exactly 2^32, which would be field number 2^29),
     and a tag or length longer than five bytes. -/
-theorem Spec.reject_vectors :
+theorem Protobuf.Spec.reject_vectors :
     decode [0x08] = none ∧
     decode [0x08, 0x80] = none ∧
     decode [0x08, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00] = none ∧

@@ -57,7 +57,7 @@ BUGS = [
      "if (rest.take len).length < len then none",
      "it shows only when a length of 2^31 - 16 or more is followed by that many bytes, "
      "an input of about 2 GiB; a shorter input with such a length is refused for running "
-     "out of input either way. `Spec.decode_iff` covers the limit."),
+     "out of input either way. `Protobuf.Spec.decode_iff` covers the limit."),
     ("A group start tag read as an empty LEN field", "Protobuf/Wire.lean",
      "      | _ => none",
      "      | 3 => some (⟨n, .len []⟩, rest)\n      | _ => none", None),

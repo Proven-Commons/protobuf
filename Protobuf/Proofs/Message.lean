@@ -1,16 +1,16 @@
 /-
   Fields and messages against the spec: `Field.isValid` decides
-  `Spec.ValidField`, the encoder writes `Spec.encode`, `decodeField`
-  reads exactly one record (`Spec.FieldBytes`) from the front of its
-  input, `decode` reads exactly a `Spec.Message`, decoding what the
+  `Protobuf.Spec.ValidField`, the encoder writes `Protobuf.Spec.encode`, `decodeField`
+  reads exactly one record (`Protobuf.Spec.FieldBytes`) from the front of its
+  input, `decode` reads exactly a `Protobuf.Spec.Message`, decoding what the
   encoder wrote gives the fields back, and every field the decoder
   returns is valid.
 -/
 
 import Protobuf
-import Spec.Defs
-import Proofs.Varint
-import Proofs.Fixed
+import Protobuf.Spec.Defs
+import Protobuf.Proofs.Varint
+import Protobuf.Proofs.Fixed
 
 namespace Protobuf.Proofs.Message
 
@@ -18,13 +18,13 @@ open Protobuf
 
 /-! ## Validity -/
 
-theorem isValid_iff (f : Field) : f.isValid = true ↔ Spec.ValidField f := by
+theorem isValid_iff (f : Field) : f.isValid = true ↔ Protobuf.Spec.ValidField f := by
   obtain ⟨n, v⟩ := f
-  cases v <;> simp [Field.isValid, Spec.ValidField, and_assoc]
+  cases v <;> simp [Field.isValid, Protobuf.Spec.ValidField, and_assoc]
 
 /-! ## The encoder -/
 
-theorem field_encode_eq (f : Field) (h : Spec.ValidField f) : f.encode = Spec.fieldBytes f := by
+theorem field_encode_eq (f : Field) (h : Protobuf.Spec.ValidField f) : f.encode = Protobuf.Spec.fieldBytes f := by
   obtain ⟨n, v⟩ := f
   obtain ⟨h1, h2, h3⟩ := h
   have h2 : n < 2 ^ 29 := h2
@@ -32,29 +32,29 @@ theorem field_encode_eq (f : Field) (h : Spec.ValidField f) : f.encode = Spec.fi
   cases v with
   | varint v =>
     have h3 : v < 2 ^ 64 := h3
-    show Varint.encode (n * 8 + 0) ++ Varint.encode v = Spec.varint (n * 8 + 0) ++ Spec.varint v
+    show Varint.encode (n * 8 + 0) ++ Varint.encode v = Protobuf.Spec.varint (n * 8 + 0) ++ Protobuf.Spec.varint v
     rw [Proofs.Varint.encode_eq _ (hn 0 (by decide)), Proofs.Varint.encode_eq _ h3]
   | i64 v =>
-    show Varint.encode (n * 8 + 1) ++ leBytes 8 v = Spec.varint (n * 8 + 1) ++ Spec.leBytes 8 v
+    show Varint.encode (n * 8 + 1) ++ leBytes 8 v = Protobuf.Spec.varint (n * 8 + 1) ++ Protobuf.Spec.leBytes 8 v
     rw [Proofs.Varint.encode_eq _ (hn 1 (by decide)), Proofs.Fixed.leBytes_eq]
   | len d =>
     have h3 : d.length < 2 ^ 31 - 16 := h3
     show Varint.encode (n * 8 + 2) ++ (Varint.encode d.length ++ d) =
-      Spec.varint (n * 8 + 2) ++ Spec.varint d.length ++ d
+      Protobuf.Spec.varint (n * 8 + 2) ++ Protobuf.Spec.varint d.length ++ d
     rw [Proofs.Varint.encode_eq _ (hn 2 (by decide)), Proofs.Varint.encode_eq _ (by omega),
       List.append_assoc]
   | i32 v =>
-    show Varint.encode (n * 8 + 5) ++ leBytes 4 v = Spec.varint (n * 8 + 5) ++ Spec.leBytes 4 v
+    show Varint.encode (n * 8 + 5) ++ leBytes 4 v = Protobuf.Spec.varint (n * 8 + 5) ++ Protobuf.Spec.leBytes 4 v
     rw [Proofs.Varint.encode_eq _ (hn 5 (by decide)), Proofs.Fixed.leBytes_eq]
 
 theorem encode_cons (f : Field) (fs : List Field) : encode (f :: fs) = f.encode ++ encode fs := by
   simp [encode]
 
 theorem spec_encode_cons (f : Field) (fs : List Field) :
-    Spec.encode (f :: fs) = Spec.fieldBytes f ++ Spec.encode fs := by
-  simp [Spec.encode]
+    Protobuf.Spec.encode (f :: fs) = Protobuf.Spec.fieldBytes f ++ Protobuf.Spec.encode fs := by
+  simp [Protobuf.Spec.encode]
 
-theorem encode_eq (fs : List Field) (h : ∀ f ∈ fs, Spec.ValidField f) : encode fs = Spec.encode fs := by
+theorem encode_eq (fs : List Field) (h : ∀ f ∈ fs, Protobuf.Spec.ValidField f) : encode fs = Protobuf.Spec.encode fs := by
   induction fs with
   | nil => rfl
   | cons f fs ih =>
@@ -71,7 +71,7 @@ theorem take_short (l : List UInt8) (k : Nat) : ((l.take k).length < k) = (l.len
 
 theorem decodeField_iff (bs : List UInt8) (f : Field) (rest : List UInt8) :
     decodeField bs = some (f, rest) ↔
-      ∃ tag payload, bs = tag ++ payload ++ rest ∧ Spec.FieldBytes tag payload f := by
+      ∃ tag payload, bs = tag ++ payload ++ rest ∧ Protobuf.Spec.FieldBytes tag payload f := by
   constructor
   · intro h
     unfold decodeField at h
@@ -141,12 +141,12 @@ theorem decodeField_iff (bs : List UInt8) (f : Field) (rest : List UInt8) :
   · rintro ⟨tag, payload, rfl, hshape, ht32, hnum, hn, hm⟩
     obtain ⟨num, val⟩ := f
     have hd : Varint.decodeAux 5 (tag ++ payload ++ rest) =
-        some (Spec.groupsValue tag, payload ++ rest) :=
+        some (Protobuf.Spec.groupsValue tag, payload ++ rest) :=
       (Proofs.Varint.decodeAux_iff 5 _ _ _).mpr ⟨tag, List.append_assoc _ _ _, hshape, rfl⟩
-    have hc : ¬(2 ^ 32 ≤ Spec.groupsValue tag ∨ Spec.groupsValue tag / 8 = 0) := by
+    have hc : ¬(2 ^ 32 ≤ Protobuf.Spec.groupsValue tag ∨ Protobuf.Spec.groupsValue tag / 8 = 0) := by
       simp only at hnum hn
       omega
-    have hnum' : num = Spec.groupsValue tag / 8 := hnum
+    have hnum' : num = Protobuf.Spec.groupsValue tag / 8 := hnum
     unfold decodeField
     simp only [take_short]
     rw [hd]
@@ -185,7 +185,7 @@ theorem decodeField_iff (bs : List UInt8) (f : Field) (rest : List UInt8) :
 
 /-- Whatever `decodeAux` returns, with any fuel, is a message. -/
 theorem decodeAux_sound (fuel : Nat) :
-    ∀ bs fs, decodeAux fuel bs = some fs → Spec.Message bs fs := by
+    ∀ bs fs, decodeAux fuel bs = some fs → Protobuf.Spec.Message bs fs := by
   induction fuel with
   | zero =>
     intro bs fs h
@@ -218,7 +218,7 @@ theorem decodeAux_sound (fuel : Nat) :
 
 /-- A message is read whole by `decodeAux` with fuel at least its length:
     each record takes at least one byte, since its tag does. -/
-theorem decodeAux_complete {bs : List UInt8} {fs : List Field} (h : Spec.Message bs fs) :
+theorem decodeAux_complete {bs : List UInt8} {fs : List Field} (h : Protobuf.Spec.Message bs fs) :
     ∀ fuel, bs.length ≤ fuel → decodeAux fuel bs = some fs := by
   induction h with
   | nil => intro fuel _; cases fuel <;> rfl
@@ -235,13 +235,13 @@ theorem decodeAux_complete {bs : List UInt8} {fs : List Field} (h : Spec.Message
     simp only [decodeAux, hd]
     rw [ih fuel' (by omega)]
 
-theorem decode_iff (bs : List UInt8) (fs : List Field) : decode bs = some fs ↔ Spec.Message bs fs :=
+theorem decode_iff (bs : List UInt8) (fs : List Field) : decode bs = some fs ↔ Protobuf.Spec.Message bs fs :=
   ⟨decodeAux_sound bs.length bs fs, fun h => decodeAux_complete h bs.length (Nat.le_refl _)⟩
 
 /-! ## Decoded fields are valid -/
 
-theorem fieldBytes_valid {tag payload : List UInt8} {f : Field} (h : Spec.FieldBytes tag payload f) :
-    Spec.ValidField f := by
+theorem fieldBytes_valid {tag payload : List UInt8} {f : Field} (h : Protobuf.Spec.FieldBytes tag payload f) :
+    Protobuf.Spec.ValidField f := by
   obtain ⟨num, val⟩ := f
   obtain ⟨_, ht, hnum, hn, hm⟩ := h
   simp only at hnum hn hm
@@ -262,8 +262,8 @@ theorem fieldBytes_valid {tag payload : List UInt8} {f : Field} (h : Spec.FieldB
     exact this
   · exact hm.elim
 
-theorem message_valid {bs : List UInt8} {fs : List Field} (h : Spec.Message bs fs) :
-    ∀ f ∈ fs, Spec.ValidField f := by
+theorem message_valid {bs : List UInt8} {fs : List Field} (h : Protobuf.Spec.Message bs fs) :
+    ∀ f ∈ fs, Protobuf.Spec.ValidField f := by
   induction h with
   | nil => simp
   | cons hfb _ ih =>
@@ -273,21 +273,21 @@ theorem message_valid {bs : List UInt8} {fs : List Field} (h : Spec.Message bs f
     · exact ih g hg
 
 theorem decode_valid (bs : List UInt8) (fs : List Field) (h : decode bs = some fs) :
-    ∀ f ∈ fs, Spec.ValidField f :=
+    ∀ f ∈ fs, Protobuf.Spec.ValidField f :=
   message_valid ((decode_iff bs fs).mp h)
 
 /-! ## Round trip -/
 
 /-- The shortest varint of a valid tag has at most five bytes. -/
 theorem tag_bytes (n w : Nat) (hn : n < 2 ^ 29) (hw : w < 8) :
-    Spec.VarintShape 5 (Spec.varint (n * 8 + w)) ∧ Spec.groupsValue (Spec.varint (n * 8 + w)) = n * 8 + w := by
+    Protobuf.Spec.VarintShape 5 (Protobuf.Spec.varint (n * 8 + w)) ∧ Protobuf.Spec.groupsValue (Protobuf.Spec.varint (n * 8 + w)) = n * 8 + w := by
   have hs := Proofs.Varint.varint_shape (n * 8 + w)
   have h5 : (2 : Nat) ^ 32 ≤ 128 ^ 5 := by decide
   exact ⟨Proofs.Varint.shape_mono hs.1 (Proofs.Varint.varint_length _ 5 (by decide) (by omega)), hs.2⟩
 
 /-- The bytes the encoder writes for a valid field are one record. -/
-theorem fieldBytes_split (f : Field) (h : Spec.ValidField f) :
-    ∃ tag payload, Spec.fieldBytes f = tag ++ payload ∧ Spec.FieldBytes tag payload f := by
+theorem fieldBytes_split (f : Field) (h : Protobuf.Spec.ValidField f) :
+    ∃ tag payload, Protobuf.Spec.fieldBytes f = tag ++ payload ∧ Protobuf.Spec.FieldBytes tag payload f := by
   obtain ⟨n, val⟩ := f
   obtain ⟨h1, h2, h3⟩ := h
   have h1 : 1 ≤ n := h1
@@ -296,7 +296,7 @@ theorem fieldBytes_split (f : Field) (h : Spec.ValidField f) :
   | varint v =>
     have h3 : v < 2 ^ 64 := h3
     obtain ⟨hs, hg⟩ := tag_bytes n 0 h2 (by decide)
-    refine ⟨Spec.varint (n * 8 + 0), Spec.varint v, rfl, hs, by rw [hg]; omega,
+    refine ⟨Protobuf.Spec.varint (n * 8 + 0), Protobuf.Spec.varint v, rfl, hs, by rw [hg]; omega,
       show n = _ by rw [hg]; omega, h1, ?_⟩
     rw [hg, show (n * 8 + 0) % 8 = 0 by omega]
     have hv := Proofs.Varint.varint_shape v
@@ -306,7 +306,7 @@ theorem fieldBytes_split (f : Field) (h : Spec.ValidField f) :
   | i64 v =>
     have h3 : v < 2 ^ 64 := h3
     obtain ⟨hs, hg⟩ := tag_bytes n 1 h2 (by decide)
-    refine ⟨Spec.varint (n * 8 + 1), Spec.leBytes 8 v, rfl, hs, by rw [hg]; omega,
+    refine ⟨Protobuf.Spec.varint (n * 8 + 1), Protobuf.Spec.leBytes 8 v, rfl, hs, by rw [hg]; omega,
       show n = _ by rw [hg]; omega, h1, ?_⟩
     rw [hg, show (n * 8 + 1) % 8 = 1 by omega]
     exact ⟨Proofs.Fixed.leBytes_length 8 v,
@@ -314,25 +314,25 @@ theorem fieldBytes_split (f : Field) (h : Spec.ValidField f) :
   | len d =>
     have h3 : d.length < 2 ^ 31 - 16 := h3
     obtain ⟨hs, hg⟩ := tag_bytes n 2 h2 (by decide)
-    refine ⟨Spec.varint (n * 8 + 2), Spec.varint d.length ++ d, List.append_assoc _ _ _, hs,
+    refine ⟨Protobuf.Spec.varint (n * 8 + 2), Protobuf.Spec.varint d.length ++ d, List.append_assoc _ _ _, hs,
       by rw [hg]; omega, show n = _ by rw [hg]; omega, h1, ?_⟩
     rw [hg, show (n * 8 + 2) % 8 = 2 by omega]
     have hv := Proofs.Varint.varint_shape d.length
     have h5 : (2 : Nat) ^ 31 ≤ 128 ^ 5 := by decide
-    exact ⟨Spec.varint d.length, rfl,
+    exact ⟨Protobuf.Spec.varint d.length, rfl,
       Proofs.Varint.shape_mono hv.1 (Proofs.Varint.varint_length _ 5 (by decide) (by omega)),
       hv.2, h3⟩
   | i32 v =>
     have h3 : v < 2 ^ 32 := h3
     obtain ⟨hs, hg⟩ := tag_bytes n 5 h2 (by decide)
-    refine ⟨Spec.varint (n * 8 + 5), Spec.leBytes 4 v, rfl, hs, by rw [hg]; omega,
+    refine ⟨Protobuf.Spec.varint (n * 8 + 5), Protobuf.Spec.leBytes 4 v, rfl, hs, by rw [hg]; omega,
       show n = _ by rw [hg]; omega, h1, ?_⟩
     rw [hg, show (n * 8 + 5) % 8 = 5 by omega]
     exact ⟨Proofs.Fixed.leBytes_length 4 v,
       (Proofs.Fixed.leValue_leBytes 4 v (by simpa using h3)).symm⟩
 
-theorem encode_message (fs : List Field) (h : ∀ f ∈ fs, Spec.ValidField f) :
-    Spec.Message (Spec.encode fs) fs := by
+theorem encode_message (fs : List Field) (h : ∀ f ∈ fs, Protobuf.Spec.ValidField f) :
+    Protobuf.Spec.Message (Protobuf.Spec.encode fs) fs := by
   induction fs with
   | nil => exact .nil
   | cons f fs ih =>
@@ -340,7 +340,7 @@ theorem encode_message (fs : List Field) (h : ∀ f ∈ fs, Spec.ValidField f) :
     rw [spec_encode_cons, he]
     exact .cons hfb (ih fun g hg => h g (by simp [hg]))
 
-theorem decode_encode (fs : List Field) (h : ∀ f ∈ fs, Spec.ValidField f) :
+theorem decode_encode (fs : List Field) (h : ∀ f ∈ fs, Protobuf.Spec.ValidField f) :
     decode (encode fs) = some fs := by
   rw [encode_eq fs h]
   exact (decode_iff _ _).mpr (encode_message fs h)

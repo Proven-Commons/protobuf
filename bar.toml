@@ -18,7 +18,7 @@ entry_points = ["Main.lean"]
 [spec]
 # Protobuf/Types.lean holds the types every statement is about, so it
 # is part of the specification.
-files = ["SPEC.md", "Spec.lean", "Spec/Defs.lean", "Protobuf/Types.lean"]
+files = ["SPEC.md", "Protobuf/Spec.lean", "Protobuf/Spec/Defs.lean", "Protobuf/Types.lean"]
 # The code under proof: the functions the statements are about.
 code = [
   "Protobuf.Varint.encode", "Protobuf.Varint.decode",

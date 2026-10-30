@@ -1,16 +1,18 @@
 name = "protobuf"
 version = "0.1.0"
 license = "Apache-2.0"
-defaultTargets = ["Protobuf", "Spec", "Proofs", "protowire"]
+defaultTargets = ["Protobuf", "ProtobufSpec", "ProtobufProofs", "protowire"]
 
 [[lean_lib]]
 name = "Protobuf"
 
 [[lean_lib]]
-name = "Spec"
+name = "ProtobufSpec"
+roots = ["Protobuf.Spec"]
 
 [[lean_lib]]
-name = "Proofs"
+name = "ProtobufProofs"
+roots = ["Protobuf.Proofs"]
 
 [[lean_exe]]
 name = "protowire"
